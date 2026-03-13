@@ -17,5 +17,5 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   giphyApiKey: "",
-  hotkey: "Control+Shift+KeyG",
+  hotkey: "CmdOrCtrl+Shift+G",
 };

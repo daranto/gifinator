@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getSettings, saveSettings } from "../services/store";
-  import { registerHotkey } from "../services/hotkey";
+  import { updateHotkey } from "../services/hotkey";
   import type { AppSettings } from "../types";
   import { DEFAULT_SETTINGS } from "../types";
   import { onMount } from "svelte";
@@ -22,10 +22,26 @@
 
   function formatHotkey(shortcut: string): string {
     return shortcut
+      .replace("CmdOrCtrl", "Ctrl")
       .replace("Control", "Ctrl")
-      .replace("Key", "")
-      .replace("Digit", "")
       .replace(/\+/g, " + ");
+  }
+
+  function codeToTauriKey(code: string): string {
+    if (code.startsWith("Key")) return code.slice(3);
+    if (code.startsWith("Digit")) return code.slice(5);
+    const map: Record<string, string> = {
+      Space: "Space", Backspace: "Backspace", Tab: "Tab",
+      Enter: "Enter", ArrowUp: "Up", ArrowDown: "Down",
+      ArrowLeft: "Left", ArrowRight: "Right", Delete: "Delete",
+      Home: "Home", End: "End", PageUp: "PageUp", PageDown: "PageDown",
+      Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]",
+      Semicolon: ";", Quote: "'", Backquote: "`", Backslash: "\\",
+      Comma: ",", Period: ".", Slash: "/",
+    };
+    if (map[code]) return map[code];
+    if (code.startsWith("F") && !isNaN(Number(code.slice(1)))) return code;
+    return code;
   }
 
   function handleKeyRecord(e: KeyboardEvent) {
@@ -37,19 +53,16 @@
       return;
     }
 
-    // Ignore standalone modifier keys
     if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
 
     const parts: string[] = [];
-    if (e.ctrlKey) parts.push("Control");
+    if (e.ctrlKey || e.metaKey) parts.push("CmdOrCtrl");
     if (e.shiftKey) parts.push("Shift");
     if (e.altKey) parts.push("Alt");
-    if (e.metaKey) parts.push("Super");
 
-    // Need at least one modifier
     if (parts.length === 0) return;
 
-    parts.push(e.code);
+    parts.push(codeToTauriKey(e.code));
     hotkey = parts.join("+");
     recording = false;
   }
@@ -59,12 +72,16 @@
     saved = false;
 
     try {
+      const currentSettings = await getSettings();
+      const oldHotkey = currentSettings.hotkey;
       const settings: AppSettings = {
         giphyApiKey: apiKey.trim(),
         hotkey,
       };
       await saveSettings(settings);
-      await registerHotkey(hotkey);
+      if (hotkey !== oldHotkey) {
+        await updateHotkey(oldHotkey, hotkey);
+      }
       saved = true;
       setTimeout(() => { saved = false; }, 2000);
     } catch (e) {

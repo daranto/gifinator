@@ -8,7 +8,6 @@
   import Settings from "./lib/components/Settings.svelte";
   import { searchGifs, trendingGifs } from "./lib/services/giphy";
   import { getSettings, getRecentGifs } from "./lib/services/store";
-  import { registerHotkey } from "./lib/services/hotkey";
   import type { GifData } from "./lib/types";
 
   let view: "overlay" | "settings" = $state("overlay");
@@ -21,15 +20,7 @@
   const appWindow = getCurrentWebviewWindow();
 
   onMount(async () => {
-    // Register hotkey from settings
-    try {
-      const settings = await getSettings();
-      if (settings.hotkey) {
-        await registerHotkey(settings.hotkey);
-      }
-    } catch (e) {
-      console.error("Failed to register hotkey:", e);
-    }
+    // Hotkey is registered by Rust on startup — no JS registration needed
 
     // Load initial GIFs
     await loadRecentOrTrending();
